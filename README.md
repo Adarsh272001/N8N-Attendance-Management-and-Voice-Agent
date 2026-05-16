@@ -28,7 +28,15 @@ This project was built using self hosted N8N running on Docker container. Using 
 * Workflow 1 : Attendance updater
 * Workflow 2 : Voice Agent
 
+![n8n Workflows](images/worflow.png)
+
 ## Database(MYSQL)
 
 - Database Name: SmartAttendance
 - Tables : Attendance_Logs and Students Table
+
+## Attendace_Logs Table Schema
+![Attendance_logs](images/attendance_logs.png)
+
+## Students Table Schema
+![Students](images/students.png)
