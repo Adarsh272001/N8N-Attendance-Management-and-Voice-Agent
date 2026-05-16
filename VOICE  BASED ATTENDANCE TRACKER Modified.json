@@ -1,0 +1,469 @@
+{
+  "name": "VOICE  BASED ATTENDANCE TRACKER Modified",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "60d26f50-dbfa-47d6-95f7-e0e2c8e9fc0d",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -464,
+        -80
+      ],
+      "id": "5c7ad44f-9f0d-4320-ba32-f93b0e2573e4",
+      "name": "Webhook",
+      "webhookId": "60d26f50-dbfa-47d6-95f7-e0e2c8e9fc0d"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO AttendanceLogs (uid, status, log_date) \nVALUES ('{{ $json.body.uid }}', {{ $json.body.status }}, '{{ $json.body.log_date }}')\nON DUPLICATE KEY UPDATE status = VALUES(status);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -240,
+        -144
+      ],
+      "id": "ab727161-4334-4551-b5c2-7bda9a284b9a",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "mySql": {
+          "id": "YUJxH3YpZYih5aHA",
+          "name": "MySQL account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT s.name, s.phone_number, s.uid\nFROM Students s\nJOIN (\n    -- Subquery: Finds UIDs with 3 zeros in the last 3 recorded days\n    SELECT uid\n    FROM AttendanceLogs\n    WHERE log_date IN (\n        -- The \"Wrapper\" subquery to bypass the LIMIT restriction\n        SELECT log_date FROM (\n            SELECT DISTINCT log_date \n            FROM AttendanceLogs \n            ORDER BY log_date DESC \n            LIMIT 3\n        ) AS recent_dates\n    )\n    GROUP BY uid\n    HAVING COUNT(status) = 3 AND SUM(status) = 0\n) AS absentees ON s.uid = absentees.uid;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -272,
+        176
+      ],
+      "id": "5e1ac9f4-e8eb-42f2-b469-3f99fd8ab9de",
+      "name": "Execute a SQL query1",
+      "credentials": {
+        "mySql": {
+          "id": "YUJxH3YpZYih5aHA",
+          "name": "MySQL account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 15,
+              "triggerAtMinute": 24
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -496,
+        176
+      ],
+      "id": "7a182db3-c219-48eb-8164-e42202a2adc9",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:5001/trigger",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "script",
+              "value": "={{ $json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        192,
+        176
+      ],
+      "id": "ee6ed3d4-2cf7-419c-b65a-6df20b271537",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Student Name: {{ $json.name }}, UID: {{ $json.uid }}. Generate the script now",
+        "options": {
+          "systemMessage": "=\"You are an assistant for the MBA-DSAI department. Generate a short script (under 25 words) for a student who has been absent for 3 days. Use the specific Name and UID provided in the prompt. Do not use generic placeholders like 'Student'."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -96,
+        176
+      ],
+      "id": "13a90848-2a2d-4b68-8f50-1004aaea8b87",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3-flash-preview",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        384
+      ],
+      "id": "796a1514-32a3-450f-8646-d8303ec7df59",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "BEZ9I7T5zvj8lSy2",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Workflow for marking Attendance",
+        "height": 128,
+        "width": 166,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -784,
+        -96
+      ],
+      "id": "04727e9d-a155-4d2a-b247-ca3e5193c585",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## AI voice Agent for Attendance",
+        "height": 128,
+        "width": 176,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -784,
+        176
+      ],
+      "id": "6f27a65d-7bc4-415e-9e9e-155e944c16ff",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "15vmHxX-p2IqEad62c-br4-SyfGXh6m9XGCyYiCOlUZ4",
+          "mode": "list",
+          "cachedResultName": "Daily Attendance",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15vmHxX-p2IqEad62c-br4-SyfGXh6m9XGCyYiCOlUZ4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $json.body.uid }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "UID": "={{ $json.body.uid }}",
+            "Date": "={{ $json.body.log_date }}",
+            "Status": "={{ $json.body.status }}",
+            "Department": "MBA-DSAI",
+            "Name": "={{ $json.body.name }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "UID",
+              "displayName": "UID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Department",
+              "displayName": "Department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -240,
+        0
+      ],
+      "id": "5058f9fc-2798-4e50-8b51-c0ab13dc8dd2",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "zBDG2Um9ZwJnFcl5",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "0C036xCWcWLU2gtA",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/0C036xCWcWLU2gtA",
+          "cachedResultName": "AUTOMATIC_RESPONDER"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        400,
+        176
+      ],
+      "id": "459cfe9d-33d4-49b0-819b-d681d7d19eb4",
+      "name": "Call 'My Sub-Workflow 1'",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "# Loop over input items and add a new field called 'my_new_field' to the JSON of each one\nfor item in _items:\n  item[\"json\"][\"my_new_field\"] = 1\nreturn _items"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        432
+      ],
+      "id": "25ea1cf3-a5ce-48b6-83ac-a9a2ad615398",
+      "name": "Code in Python"
+    }
+  ],
+  "pinData": {
+    "Schedule Trigger": [
+      {
+        "json": {
+          "timestamp": "2026-05-14T18:29:37.146+05:30",
+          "Readable date": "May 14th 2026, 6:29:37 pm",
+          "Readable time": "6:29:37 pm",
+          "Day of week": "Thursday",
+          "Year": "2026",
+          "Month": "May",
+          "Day of month": "14",
+          "Hour": "18",
+          "Minute": "29",
+          "Second": "37",
+          "Timezone": "Asia/Kolkata (UTC+05:30)"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Execute a SQL query1": [
+      {
+        "json": {
+          "name": "Adarsh Vishwakarma",
+          "phone_number": "+919936313027",
+          "uid": "25MDA10053"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "name": "Nagendra Singh",
+          "phone_number": "+918077965103",
+          "uid": "25MDA10057"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "AI Agent": [
+      {
+        "json": {
+          "output": "Dear Adarsh Vishwakarma (UID: 25MDA10053), please report your 3-day absence to the MBA-DSAI department and submit the required leave documents immediately."
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      },
+      {
+        "json": {
+          "output": "Dear Nagendra Singh (25MDA10057), please explain your 3-day absence from MBA-DSAI classes to the department office immediately."
+        },
+        "pairedItem": {
+          "item": 1
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        []
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Call 'My Sub-Workflow 1'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'My Sub-Workflow 1'": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "bb5a6a8a-861c-46fc-8b52-29dd8a5714f5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4c794721232ea2f6126082046307bbf4c10c5e4b34012195ab247254820619ee"
+  },
+  "id": "MHQ77yBjxeeRrD1J",
+  "tags": []
+}
